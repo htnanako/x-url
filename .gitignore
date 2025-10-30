@@ -1,0 +1,48 @@
+# Node
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+
+# Python
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Build outputs
+build/
+dist/
+
+# SQLite databases
+data/*.db
+*.sqlite3
+*.db-shm
+*.db-wal
+backend/xurl.db
+
+# Env files
+.env
+.env.local
+.env.*
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Testing / coverage
+coverage/
+.pytest_cache/
+
+# Misc
+*.swp
+*.swo

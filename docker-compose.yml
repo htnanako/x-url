@@ -1,0 +1,10 @@
+services:
+  x-url:
+    image: htnanako/x-url:latest
+    container_name: x-url
+    network_mode: bridge
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    restart: always

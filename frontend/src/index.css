@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* base tweaks */
+html, body, #root { height: 100%; }
+
+@layer base {
+  ::selection {
+    background: rgb(99 102 241 / 0.25); /* indigo-500/25 */
+  }
+}
+
