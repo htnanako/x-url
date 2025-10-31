@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/img/logo.png" />
+    <script>
+      // 预加载时设置主题：默认深色，若本地有偏好则用偏好
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var shouldDark = saved ? saved === 'dark' : true;
+          var root = document.documentElement;
+          if (shouldDark) root.classList.add('dark'); else root.classList.remove('dark');
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <title>x-url 短链</title>
   </head>
   <body>
