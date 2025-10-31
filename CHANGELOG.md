@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/htnanako/x-url/compare/v0.2.0...v0.2.1) (2025-10-31)
+
+
+### Bug Fixes
+
+* 🐛 修复前端静态路径挂载问题 ([5292373](https://github.com/htnanako/x-url/commit/5292373d766d7e2d6d77395500c9b1fdd6ff4a2e))
+
 ## [0.2.0](https://github.com/htnanako/x-url/compare/v0.1.0...v0.2.0) (2025-10-31)
 
 
