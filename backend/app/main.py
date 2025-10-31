@@ -22,8 +22,11 @@ app = FastAPI(title="x-url")
 # Serve built frontend if present (Vite dist copied to app/static)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ASSETS_DIR = STATIC_DIR / "assets"
+IMG_DIR = STATIC_DIR / "img"
 if ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+if IMG_DIR.exists():
+    app.mount("/img", StaticFiles(directory=str(IMG_DIR)), name="img")
 
 
 # Allow local dev frontend; adjust origins for your deployment
