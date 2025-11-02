@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Check, Copy, Link as LinkIcon, Moon, Sun, QrCode, Github } from "lucide-react";
+import { Check, Copy, Link as LinkIcon, Moon, Sun, QrCode, Github, Download } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { toastConfig, getResponsiveContainerConfig } from "@/config/toastConfig";
 
@@ -121,6 +121,27 @@ export default function App() {
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
       toast.error("复制失败，请手动复制", toastConfig.error);
+    }
+  }
+
+  async function onDownloadQr(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!shortUrl || !code) return;
+    try {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(shortUrl)}`;
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${code}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("二维码下载成功", toastConfig.success);
+    } catch (err) {
+      toast.error("下载失败，请稍后再试", toastConfig.error);
     }
   }
 
@@ -313,12 +334,21 @@ export default function App() {
             <div className="p-8 w-[440px] max-w-[90vw]">
               <div className="flex flex-col items-center text-center">
                 {shortUrl && (
-                  <div className="rounded-2xl bg-white p-5 shadow-lg overflow-hidden dark:bg-white">
+                  <div className="relative rounded-2xl bg-white p-5 shadow-lg overflow-hidden dark:bg-white">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(shortUrl)}`}
                       alt="短链二维码"
                       className="h-[320px] w-[320px] max-w-[80vw] max-h-[70vh] block"
                     />
+                    {code && (
+                      <button
+                        onClick={onDownloadQr}
+                        aria-label="下载二维码"
+                        className="absolute top-2 right-2 z-10 inline-flex items-center justify-center h-10 w-10 rounded-full border border-slate-200 bg-white/90 backdrop-blur text-slate-700 shadow-md hover:bg-white hover:shadow-lg transition-all"
+                      >
+                        <Download size={18} />
+                      </button>
+                    )}
                   </div>
                 )}
                 <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">使用手机扫描二维码访问短链</p>
