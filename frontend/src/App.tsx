@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, Copy, Link as LinkIcon, Moon, Sun, QrCode, Github } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+import { toastConfig, getResponsiveContainerConfig } from "@/config/toastConfig";
 
 
 export default function App() {
@@ -59,7 +61,9 @@ export default function App() {
     setShortUrl(null);
     setExpiresAt(null);
     if (isInvalid || !url) {
-      setError("请输入以 http(s):// 开头的 URL");
+      const errorMsg = "请输入以 http(s):// 开头的 URL";
+      setError(errorMsg);
+      toast.error(errorMsg, toastConfig.error);
       return;
     }
     setLoading(true);
@@ -71,13 +75,16 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "创建失败");
+        const errorMsg = data.error || "创建失败";
+        setError(errorMsg);
+        toast.error(errorMsg, toastConfig.error);
       } else {
         // 前端默认用当前访问 base url 拼接
         const built = `${window.location.origin}/${data.code}`;
         setCode(data.code);
         setShortUrl(built);
         if (data.expires_at) setExpiresAt(data.expires_at);
+        toast.success("短链生成成功！", toastConfig.success);
         // 自动复制到剪贴板
         try {
           await navigator.clipboard.writeText(built);
@@ -88,7 +95,9 @@ export default function App() {
         }
       }
     } catch (err) {
-      setError("网络错误，请稍后再试");
+      const errorMsg = "网络错误，请稍后再试";
+      setError(errorMsg);
+      toast.error(errorMsg, toastConfig.error);
     } finally {
       setLoading(false);
     }
@@ -96,13 +105,31 @@ export default function App() {
 
   async function onCopy() {
     if (!shortUrl) return;
-    await navigator.clipboard.writeText(shortUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(shortUrl);
+      setCopied(true);
+      toast.success("已复制到剪贴板", toastConfig.success);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      toast.error("复制失败，请手动复制", toastConfig.error);
+    }
   }
 
   return (
     <div className="relative min-h-screen text-slate-900 dark:text-slate-100 overflow-hidden">
+      {/* Toast 容器 */}
+      <Toaster
+        position={toastConfig.default.position}
+        toastOptions={{
+          ...toastConfig.default,
+          style: {
+            ...toastConfig.default.style,
+          },
+        }}
+        containerStyle={getResponsiveContainerConfig().style}
+        containerClassName={getResponsiveContainerConfig().className}
+      />
+      
       {/* top-right actions */}
       <div className="fixed right-4 top-4 z-20 flex items-center gap-2">
         <a
@@ -132,26 +159,32 @@ export default function App() {
         <div className="w-full max-w-xl">
           <Card className={`${mounted ? 'animate-scale-in' : 'opacity-0'}`}>
             <CardContent>
-              <div className="mb-6 text-center">
+              <div className="mb-10 text-center">
                 <h1 className="text-4xl font-extrabold tracking-tight flex items-center justify-center gap-3">
                   <img src="/img/logo.png" alt="x-url logo" className="h-10 w-10 rounded" />
                   <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-700 to-pink-600 dark:from-white dark:via-indigo-200 dark:to-pink-200 bg-[length:200%_200%] animate-gradient-x">x-url</span>
                 </h1>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">输入长链接，获取可分享的短链。</p>
+                <p className="mt-4 text-slate-600 dark:text-slate-300">输入长链接，获取可分享的短链。</p>
               </div>
 
-              <form onSubmit={onSubmit} className="flex flex-col gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    className={`h-12 pr-9 ${isInvalid ? 'border-rose-400 focus:ring-rose-200' : ''}`}
-                    placeholder="https://example.com/very/long/url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                  />
-                  {/* link icon */}
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <LinkIcon size={18} />
-                  </span>
+              <form onSubmit={onSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="url-input" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    长链接
+                  </label>
+                  <div className="relative flex-1">
+                    <Input
+                      id="url-input"
+                      className={`h-12 pr-9 ${isInvalid ? 'border-rose-400 focus:ring-rose-200' : ''}`}
+                      placeholder="https://example.com/very/long/url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                    />
+                    {/* link icon */}
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <LinkIcon size={18} />
+                    </span>
+                  </div>
                 </div>
                 <Button className="h-12 w-full whitespace-nowrap" disabled={loading}>
                   {loading ? (
@@ -169,18 +202,21 @@ export default function App() {
               </form>
 
               {error && (
-                <p className="mt-3 text-rose-600 text-sm animate-fade-up">{error}</p>
+                <p className="mt-4 text-rose-600 text-sm animate-fade-up">{error}</p>
               )}
 
               {shortUrl && (
-                <div className="mt-5 animate-fade-up">
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 dark:border-slate-700 dark:bg-slate-800/80 px-3 py-2">
+                <div className="mt-6 animate-fade-up">
+                  <label htmlFor="short-url-input" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    短链接
+                  </label>
+                  <div id="short-url-input" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 dark:border-slate-700 dark:bg-slate-800/80 px-3 py-2">
                     <a className="inline-flex items-center gap-2 font-medium min-w-0 flex-1 text-slate-900 dark:text-slate-100" href={shortUrl}>
                       <LinkIcon size={18} />
                       <span className="truncate">{shortUrl}</span>
                     </a>
                   </div>
-                  <div className="mt-3 flex gap-3">
+                  <div className="mt-4 flex gap-3">
                     <Button
                       type="button"
                       onClick={onCopy}
@@ -226,13 +262,6 @@ export default function App() {
           </Card>
         </div>
       </div>
-
-      {/* toast */}
-      {copied && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-slate-900 text-white text-sm px-4 py-2 shadow-lg animate-scale-in">
-          已复制到剪贴板
-        </div>
-      )}
 
       {/* QR Modal */}
       {showQr && (
