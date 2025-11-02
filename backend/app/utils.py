@@ -12,6 +12,9 @@ BASE62 = string.ascii_letters + string.digits
 CODE_LENGTH = 7
 EXPIRE_DAYS_DEFAULT = 90
 CREATE_LIMIT_PER_MINUTE = 10
+CUSTOM_CODE_MIN_LENGTH = 1
+CUSTOM_CODE_MAX_LENGTH = 20
+_RESERVED_PATHS = {"api", "status", "healthz", "assets", "img"}
 
 
 def generate_code(session: Session) -> str:
@@ -38,5 +41,26 @@ def client_ip(request: Request) -> str:
     if real_ip:
         return real_ip
     return request.client.host if request.client else ""
+
+
+def validate_custom_code(code: str) -> tuple[bool, str]:
+    """
+    验证自定义短码格式
+    返回: (是否有效, 错误消息)
+    """
+    code = code.strip()
+    if not code:
+        return False, "短码不能为空"
+    
+    if len(code) < CUSTOM_CODE_MIN_LENGTH or len(code) > CUSTOM_CODE_MAX_LENGTH:
+        return False, f"短码长度必须在 {CUSTOM_CODE_MIN_LENGTH}-{CUSTOM_CODE_MAX_LENGTH} 个字符之间"
+    
+    if not all(c in BASE62 for c in code):
+        return False, "短码只能包含字母和数字"
+    
+    if code.lower() in _RESERVED_PATHS:
+        return False, f"短码 '{code}' 是保留路径，不能使用"
+    
+    return True, ""
 
 

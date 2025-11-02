@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Check, Copy, Link as LinkIcon, Moon, Sun, QrCode, Github } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { toastConfig, getResponsiveContainerConfig } from "@/config/toastConfig";
@@ -19,6 +20,8 @@ export default function App() {
   const [isDark, setIsDark] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [qrClosing, setQrClosing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [customCode, setCustomCode] = useState("");
 
   useEffect(() => setMounted(true), []);
 
@@ -68,10 +71,14 @@ export default function App() {
     }
     setLoading(true);
     try {
+      const payload: { url: string; code?: string } = { url };
+      if (customCode.trim()) {
+        payload.code = customCode.trim();
+      }
       const res = await fetch("/api/shorten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -85,6 +92,8 @@ export default function App() {
         setShortUrl(built);
         if (data.expires_at) setExpiresAt(data.expires_at);
         toast.success("短链生成成功！", toastConfig.success);
+        // 清除自定义短码
+        setCustomCode("");
         // 自动复制到剪贴板
         try {
           await navigator.clipboard.writeText(built);
@@ -185,6 +194,34 @@ export default function App() {
                       <LinkIcon size={18} />
                     </span>
                   </div>
+                </div>
+                {showAdvanced && (
+                  <div className="flex flex-col gap-2 animate-fade-up">
+                    <label htmlFor="custom-code-input" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      自定义短码
+                    </label>
+                    <ButtonGroup prefix={window.location.origin + "/"}>
+                      <Input
+                        id="custom-code-input"
+                        className="h-12 border-0 shadow-none focus:ring-0 dark:bg-transparent"
+                        placeholder="输入自定义短码（可选）"
+                        value={customCode}
+                        onChange={(e) => setCustomCode(e.target.value)}
+                      />
+                    </ButtonGroup>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      留空则由系统自动生成短码
+                    </p>
+                  </div>
+                )}
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                  >
+                    {showAdvanced ? "隐藏高级选项" : "高级选项"}
+                  </button>
                 </div>
                 <Button className="h-12 w-full whitespace-nowrap" disabled={loading}>
                   {loading ? (

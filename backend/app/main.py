@@ -14,6 +14,7 @@ from .utils import (
     client_ip,
     generate_code,
     is_rate_limited,
+    validate_custom_code,
 )
 
 
@@ -71,34 +72,80 @@ async def create_short(request: Request, payload: dict) -> JSONResponse:
     if not url or not (url.startswith("http://") or url.startswith("https://")):
         return JSONResponse({"error": "无效的 URL"}, status_code=400)
 
+    custom_code = (payload or {}).get("code", "").strip() if payload else ""
+    
     ip = client_ip(request)
     with Session(engine) as session:
         if is_rate_limited(session, ip):
             return JSONResponse({"error": "创建过于频繁，请稍后再试"}, status_code=429)
 
         now = datetime.now(timezone.utc)
-        # 先查是否已存在相同长链
-        existing = session.exec(select(ShortURL).where(ShortURL.original_url == url)).first()
-        if existing:
-            # 续期并激活，不重新生成短码
-            existing.expires_at = now + timedelta(days=EXPIRE_DAYS_DEFAULT)
-            existing.is_active = True
-            session.add(existing)
-            session.add(CreateLog(ip=ip))
-            session.commit()
-            code = existing.code
-            item = existing
+        renewed = False
+        
+        # 如果提供了自定义短码
+        if custom_code:
+            # 验证自定义短码格式
+            is_valid, error_msg = validate_custom_code(custom_code)
+            if not is_valid:
+                return JSONResponse({"error": error_msg}, status_code=400)
+            
+            # 检查自定义短码是否已存在
+            existing_by_code = session.get(ShortURL, custom_code)
+            if existing_by_code:
+                # 如果已存在且仍在使用（未过期且活跃），返回错误
+                expires_at = existing_by_code.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if existing_by_code.is_active and now < expires_at:
+                    return JSONResponse({"error": f"短码 '{custom_code}' 已被使用"}, status_code=409)
+                # 如果已过期或不活跃，可以复用这个短码
+                existing_by_code.original_url = url
+                existing_by_code.expires_at = now + timedelta(days=EXPIRE_DAYS_DEFAULT)
+                existing_by_code.is_active = True
+                existing_by_code.clicks = 0  # 重置点击计数
+                session.add(existing_by_code)
+                session.add(CreateLog(ip=ip))
+                session.commit()
+                code = custom_code
+                item = existing_by_code
+                renewed = True  # 复用已存在的短码
+            else:
+                # 使用自定义短码创建新记录
+                code = custom_code
+                item = ShortURL(
+                    code=code,
+                    original_url=url,
+                    expires_at=now + timedelta(days=EXPIRE_DAYS_DEFAULT),
+                    is_active=True,
+                )
+                session.add(item)
+                session.add(CreateLog(ip=ip))
+                session.commit()
         else:
-            code = generate_code(session)
-            item = ShortURL(
-                code=code,
-                original_url=url,
-                expires_at=now + timedelta(days=EXPIRE_DAYS_DEFAULT),
-                is_active=True,
-            )
-            session.add(item)
-            session.add(CreateLog(ip=ip))
-            session.commit()
+            # 没有自定义短码，先查是否已存在相同长链
+            existing = session.exec(select(ShortURL).where(ShortURL.original_url == url)).first()
+            if existing:
+                # 续期并激活，不重新生成短码
+                existing.expires_at = now + timedelta(days=EXPIRE_DAYS_DEFAULT)
+                existing.is_active = True
+                session.add(existing)
+                session.add(CreateLog(ip=ip))
+                session.commit()
+                code = existing.code
+                item = existing
+                renewed = True  # 续期已存在的短链
+            else:
+                # 生成新的短码
+                code = generate_code(session)
+                item = ShortURL(
+                    code=code,
+                    original_url=url,
+                    expires_at=now + timedelta(days=EXPIRE_DAYS_DEFAULT),
+                    is_active=True,
+                )
+                session.add(item)
+                session.add(CreateLog(ip=ip))
+                session.commit()
 
         base = str(request.base_url).rstrip("/")
         expires = item.expires_at
@@ -110,7 +157,7 @@ async def create_short(request: Request, payload: dict) -> JSONResponse:
                 "code": code,
                 "short_url": f"{base}/{code}",
                 "expires_at": expires_iso,  # UTC ISO8601 with Z
-                "renewed": bool(existing),
+                "renewed": renewed,
             },
             status_code=201,
         )
